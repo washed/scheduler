@@ -11,42 +11,48 @@ impl Weekly {
         &'a self,
         n: usize,
         now: fn() -> DateTime<Tz>,
-    ) -> impl Iterator<Item = DateTime<Tz>> + 'a {
-        self.weekdays
-            .iter()
-            .cycle()
-            .enumerate()
-            .skip(now().weekday().num_days_from_monday() as usize)
-            .map(move |(i, e)| {
-                let now = now();
-                let weekday = now.weekday();
-                let weekday_offset = weekday.num_days_from_monday() as i64;
-                let now_midnight = now.duration_round(Duration::days(1)).unwrap();
-                (
-                    *e,
-                    now_midnight + Duration::days(i as i64 - weekday_offset) + self.time,
-                )
-            })
-            .skip_while(move |(_e, dt)| {
-                let now = now();
-                *dt < now
-            })
-            .filter_map(|(e, dt)| match e {
-                true => Some(dt),
-                false => None,
-            })
-            .take(n)
+    ) -> Option<impl Iterator<Item = DateTime<Tz>> + 'a> {
+        match self.weekdays.iter().all(|e| !e) {
+            true => None,
+            false => Some(
+                self.weekdays
+                    .iter()
+                    .cycle()
+                    .enumerate()
+                    .skip(now().weekday().num_days_from_monday() as usize)
+                    .map(move |(i, e)| {
+                        let now = now();
+                        let weekday = now.weekday();
+                        let weekday_offset = weekday.num_days_from_monday() as i64;
+                        let now_midnight = now.duration_round(Duration::days(1)).unwrap();
+                        (
+                            *e,
+                            now_midnight + Duration::days(i as i64 - weekday_offset) + self.time,
+                        )
+                    })
+                    .skip_while(move |(_e, dt)| {
+                        let now = now();
+                        *dt < now
+                    })
+                    .filter_map(|(e, dt)| match e {
+                        true => Some(dt),
+                        false => None,
+                    })
+                    .take(n),
+            ),
+        }
     }
 
     pub fn time_to_next_runs<'a, Tz: TimeZone + 'a>(
         &'a self,
         n: usize,
         now: fn() -> DateTime<Tz>,
-    ) -> impl Iterator<Item = Duration> + 'a {
-        self.next_runs(n, now).map(move |dt| {
+    ) -> Option<impl Iterator<Item = Duration> + 'a> {
+        let next_runs = self.next_runs(n, now)?;
+        Some(next_runs.map(move |dt| {
             let now = now();
             dt - now
-        })
+        }))
     }
 }
 
@@ -71,10 +77,11 @@ mod tests {
     fn it_works() {
         let weekly = Weekly {
             weekdays: [false, true, true, true, true, true, true],
+            // weekdays: [false, false, false, false, false, false, false],
             time: Duration::hours(12),
         };
 
-        let ttnr: Vec<DateTime<Utc>> = weekly.next_runs(9, fake_now_utc).collect();
+        let ttnr: Vec<DateTime<Utc>> = weekly.next_runs(9, fake_now_utc).unwrap().collect();
         let expected_ttnr: Vec<DateTime<Utc>> = [
             DateTime::parse_from_rfc3339("2023-01-01T12:00:00Z")
                 .unwrap()
