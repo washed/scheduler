@@ -7,6 +7,3 @@ edition = "2021"
 
 [dependencies]
 chrono = { version = "0.4.31", features = ["serde"] }
-
-[dev-dependencies]
-hhmmss = "0.1.0"
