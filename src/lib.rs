@@ -15,8 +15,9 @@ pub trait Trigger<Tz: TimeZone> {
 pub struct Weekly<Tz: TimeZone> {
     weekdays: [bool; 7],
     time: Duration,
-    callback: fn(dt: DateTime<Tz>),
     now: fn() -> DateTime<Tz>,
+
+    pub callback: fn(dt: DateTime<Tz>),
 }
 
 impl<Tz: TimeZone> Weekly<Tz> {
@@ -114,12 +115,12 @@ mod tests {
             .into()
     }
 
+    fn callback<Tz: TimeZone>(_dt: DateTime<Tz>) {
+        println!("called!");
+    }
+
     #[test]
     fn it_works_utc() {
-        fn callback(dt: DateTime<Utc>) {
-            println!("called!");
-        }
-
         let weekly = Weekly {
             weekdays: [false, true, true, true, true, true, true],
             // weekdays: [false, false, false, false, false, false, false],
@@ -152,10 +153,6 @@ mod tests {
 
     #[test]
     fn it_works_local() {
-        fn callback(dt: DateTime<Local>) {
-            println!("called!");
-        }
-
         let weekly = Weekly {
             weekdays: [false, true, true, true, true, true, true],
             // weekdays: [false, false, false, false, false, false, false],
@@ -188,10 +185,6 @@ mod tests {
 
     #[test]
     fn it_works_local_dst_change_spring() {
-        fn callback(dt: DateTime<Local>) {
-            println!("called!");
-        }
-
         let weekly = Weekly {
             weekdays: [false, true, true, true, true, true, true],
             // weekdays: [false, false, false, false, false, false, false],
@@ -224,10 +217,6 @@ mod tests {
 
     #[test]
     fn it_works_local_dst_change_autumn() {
-        fn callback(dt: DateTime<Local>) {
-            println!("called!");
-        }
-
         let weekly = Weekly {
             weekdays: [false, true, true, true, true, true, true],
             // weekdays: [false, false, false, false, false, false, false],
