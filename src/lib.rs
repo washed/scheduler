@@ -1,60 +1,87 @@
+use std::iter::Iterator;
+
 use chrono::{DateTime, Datelike, Duration, DurationRound, TimeZone};
 
-pub struct Weekly<Tz: TimeZone> {
-    pub weekdays: [bool; 7],
-    pub time: Duration,
-    pub callback: fn(dt: DateTime<Tz>),
+pub trait Trigger<Tz: TimeZone> {
+    fn next_runs(&self, _n: usize) -> Vec<DateTime<Tz>> {
+        Vec::<DateTime<Tz>>::new()
+    }
+
+    fn time_to_next_runs(&self, _n: usize) -> Vec<Duration> {
+        Vec::<Duration>::new()
+    }
 }
 
-impl<'a, Tz: TimeZone + 'a> Weekly<Tz> {
-    pub fn next_runs(
-        &'a self,
-        n: usize,
+pub struct Weekly<Tz: TimeZone> {
+    weekdays: [bool; 7],
+    time: Duration,
+    callback: fn(dt: DateTime<Tz>),
+    now: fn() -> DateTime<Tz>,
+}
+
+impl<Tz: TimeZone> Weekly<Tz> {
+    pub fn new(
+        weekdays: [bool; 7],
+        time: Duration,
+        callback: fn(dt: DateTime<Tz>),
         now: fn() -> DateTime<Tz>,
-    ) -> Option<impl Iterator<Item = DateTime<Tz>> + 'a> {
+    ) -> Self {
+        Self {
+            weekdays,
+            time,
+            callback,
+            now,
+        }
+    }
+}
+
+impl<Tz: TimeZone> Trigger<Tz> for Weekly<Tz> {
+    fn next_runs(&self, n: usize) -> Vec<DateTime<Tz>> {
         match self.weekdays.iter().all(|e| !e) {
-            true => None,
-            false => Some(
-                self.weekdays
-                    .iter()
-                    .cycle()
-                    .enumerate()
-                    .skip(now().weekday().num_days_from_monday() as usize)
-                    .filter_map(move |(i, e)| {
-                        let now = now();
-                        let weekday = now.weekday();
-                        let weekday_offset = weekday.num_days_from_monday() as i64;
-                        let now_midnight = now.clone().duration_round(Duration::days(1)).unwrap().naive_local();
-                        let next_dt_naive = (now_midnight + Duration::days(i as i64 - weekday_offset) + self.time).and_local_timezone(now.timezone());
-                        match next_dt_naive {
-                            chrono::LocalResult::None => None,
-                            chrono::LocalResult::Ambiguous(_, _) => None,
-                            chrono::LocalResult::Single(res) => Some((*e, res))
-                        }
-                    })
-                    .skip_while(move |(_e, dt)| {
-                        let now = now();
-                        *dt < now
-                    })
-                    .filter_map(|(e, dt)| match e {
-                        true => Some(dt),
-                        false => None,
-                    })
-                    .take(n),
-            ),
+            true => Vec::<DateTime<Tz>>::new(),
+            false => self
+                .weekdays
+                .iter()
+                .cycle()
+                .enumerate()
+                .skip((self.now)().weekday().num_days_from_monday() as usize)
+                .filter_map(move |(i, e)| {
+                    let now = (self.now)();
+                    let weekday = now.weekday();
+                    let weekday_offset = weekday.num_days_from_monday() as i64;
+                    let now_midnight = now
+                        .clone()
+                        .duration_round(Duration::days(1))
+                        .unwrap()
+                        .naive_local();
+                    let next_dt_naive =
+                        (now_midnight + Duration::days(i as i64 - weekday_offset) + self.time)
+                            .and_local_timezone(now.timezone());
+                    match next_dt_naive {
+                        chrono::LocalResult::None => None,
+                        chrono::LocalResult::Ambiguous(_, _) => None,
+                        chrono::LocalResult::Single(res) => Some((*e, res)),
+                    }
+                })
+                .skip_while(move |(_e, dt)| *dt < (self.now)())
+                .filter_map(|(e, dt)| match e {
+                    true => Some(dt),
+                    false => None,
+                })
+                .take(n)
+                .collect(),
         }
     }
 
-    pub fn time_to_next_runs(
-        &'a self,
-        n: usize,
-        now: fn() -> DateTime<Tz>,
-    ) -> Option<impl Iterator<Item = Duration> + 'a> {
-        let next_runs = self.next_runs(n, now)?;
-        Some(next_runs.map(move |dt| {
-            let now = now();
-            dt - now
-        }))
+    fn time_to_next_runs(&self, n: usize) -> Vec<Duration> {
+        let next_runs = self.next_runs(n);
+        next_runs
+            .into_iter()
+            .map(move |dt| {
+                let now = (self.now)();
+                dt - now
+            })
+            .collect()
     }
 }
 
@@ -98,8 +125,9 @@ mod tests {
             // weekdays: [false, false, false, false, false, false, false],
             time: Duration::hours(12),
             callback: callback,
+            now: fake_now_utc,
         };
-        let ttnr: Vec<DateTime<Utc>> = weekly.next_runs(9, fake_now_utc).unwrap().collect();
+        let ttnr: Vec<DateTime<Utc>> = weekly.next_runs(9);
 
         let expected_ttnr_utc: Vec<DateTime<Utc>> = [
             "2023-01-01T12:00:00Z",
@@ -112,9 +140,9 @@ mod tests {
             "2023-01-10T12:00:00Z",
             "2023-01-11T12:00:00Z",
         ]
-            .iter()
-            .map(|dts| DateTime::parse_from_rfc3339(dts).unwrap().into())
-            .collect();
+        .iter()
+        .map(|dts| DateTime::parse_from_rfc3339(dts).unwrap().into())
+        .collect();
         assert_eq!(ttnr, expected_ttnr_utc);
         for d in ttnr {
             let pretty = d;
@@ -133,8 +161,9 @@ mod tests {
             // weekdays: [false, false, false, false, false, false, false],
             time: Duration::hours(12),
             callback: callback,
+            now: fake_now_local,
         };
-        let ttnr: Vec<DateTime<Local>> = weekly.next_runs(9, fake_now_local).unwrap().collect();
+        let ttnr: Vec<DateTime<Local>> = weekly.next_runs(9);
 
         let expected_ttnr_local: Vec<DateTime<Local>> = [
             "2023-01-01T12:00:00+01:00",
@@ -168,8 +197,9 @@ mod tests {
             // weekdays: [false, false, false, false, false, false, false],
             time: Duration::hours(12),
             callback: callback,
+            now: fake_now_local_dst_spring,
         };
-        let ttnr: Vec<DateTime<Local>> = weekly.next_runs(9, fake_now_local_dst_spring).unwrap().collect();
+        let ttnr: Vec<DateTime<Local>> = weekly.next_runs(9);
 
         let expected_ttnr_local: Vec<DateTime<Local>> = [
             "2023-03-24T12:00:00+01:00",
@@ -203,8 +233,9 @@ mod tests {
             // weekdays: [false, false, false, false, false, false, false],
             time: Duration::hours(12),
             callback: callback,
+            now: fake_now_local_dst_autumn,
         };
-        let ttnr: Vec<DateTime<Local>> = weekly.next_runs(9, fake_now_local_dst_autumn).unwrap().collect();
+        let ttnr: Vec<DateTime<Local>> = weekly.next_runs(9);
 
         let expected_ttnr_local: Vec<DateTime<Local>> = [
             "2023-10-27T12:00:00+02:00",
@@ -228,7 +259,5 @@ mod tests {
     }
 
     #[test]
-    fn no_runs() {
-        
-    }
+    fn no_runs() {}
 }
