@@ -123,7 +123,6 @@ mod tests {
     fn it_works_utc() {
         let weekly = Weekly {
             weekdays: [false, true, true, true, true, true, true],
-            // weekdays: [false, false, false, false, false, false, false],
             time: Duration::hours(12),
             callback: callback,
             now: fake_now_utc,
@@ -145,17 +144,12 @@ mod tests {
         .map(|dts| DateTime::parse_from_rfc3339(dts).unwrap().into())
         .collect();
         assert_eq!(ttnr, expected_ttnr_utc);
-        for d in ttnr {
-            let pretty = d;
-            println!("Duration: {pretty}");
-        }
     }
 
     #[test]
     fn it_works_local() {
         let weekly = Weekly {
             weekdays: [false, true, true, true, true, true, true],
-            // weekdays: [false, false, false, false, false, false, false],
             time: Duration::hours(12),
             callback: callback,
             now: fake_now_local,
@@ -177,17 +171,12 @@ mod tests {
         .map(|dts| DateTime::parse_from_rfc3339(dts).unwrap().into())
         .collect();
         assert_eq!(ttnr, expected_ttnr_local);
-        for d in ttnr {
-            let pretty = d;
-            println!("Duration: {pretty}");
-        }
     }
 
     #[test]
     fn it_works_local_dst_change_spring() {
         let weekly = Weekly {
             weekdays: [false, true, true, true, true, true, true],
-            // weekdays: [false, false, false, false, false, false, false],
             time: Duration::hours(12),
             callback: callback,
             now: fake_now_local_dst_spring,
@@ -209,17 +198,12 @@ mod tests {
         .map(|dts| DateTime::parse_from_rfc3339(dts).unwrap().into())
         .collect();
         assert_eq!(ttnr, expected_ttnr_local);
-        for d in ttnr {
-            let pretty = d;
-            println!("Duration: {pretty}");
-        }
     }
 
     #[test]
     fn it_works_local_dst_change_autumn() {
         let weekly = Weekly {
             weekdays: [false, true, true, true, true, true, true],
-            // weekdays: [false, false, false, false, false, false, false],
             time: Duration::hours(12),
             callback: callback,
             now: fake_now_local_dst_autumn,
@@ -241,10 +225,6 @@ mod tests {
         .map(|dts| DateTime::parse_from_rfc3339(dts).unwrap().into())
         .collect();
         assert_eq!(ttnr, expected_ttnr_local);
-        for d in ttnr {
-            let pretty = d;
-            println!("Duration: {pretty}");
-        }
     }
 
     #[test]
