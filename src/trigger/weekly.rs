@@ -1,8 +1,5 @@
-use std::iter::Iterator;
-
-use chrono::{DateTime, Datelike, Duration, DurationRound, TimeZone};
-
 use super::Trigger;
+use chrono::{DateTime, Datelike, Duration, DurationRound, TimeZone};
 
 pub struct Weekly<Tz: TimeZone> {
     weekdays: [bool; 7],

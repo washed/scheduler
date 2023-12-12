@@ -1,3 +1,4 @@
+pub mod oneshot;
 mod tests;
 pub mod weekly;
 

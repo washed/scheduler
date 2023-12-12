@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+    use crate::trigger::oneshot::Oneshot;
     use crate::trigger::weekly::Weekly;
     use crate::trigger::Trigger;
     use chrono::{DateTime, Duration, Local, TimeZone, Utc};
@@ -141,5 +142,34 @@ mod tests {
     }
 
     #[test]
-    fn no_runs() {}
+    fn no_runs() {
+        let weekly = Weekly::new(
+            [false, false, false, false, false, false, false],
+            Duration::hours(12),
+            callback,
+            fake_now_utc,
+        );
+        let ttnr: Vec<DateTime<Utc>> = weekly.next_runs(9);
+
+        assert_eq!(ttnr.len(), 0);
+    }
+
+    #[test]
+    fn oneshot_future() {
+        let run_time = fake_now_utc() + Duration::hours(1);
+        let oneshot = Oneshot::new(run_time, callback, fake_now_utc);
+        let next_runs: Vec<DateTime<Utc>> = oneshot.next_runs(1);
+
+        assert_eq!(next_runs.len(), 1);
+        assert_eq!(next_runs[0], run_time);
+    }
+
+    #[test]
+    fn oneshot_past() {
+        let run_time = fake_now_utc() - Duration::hours(1);
+        let oneshot = Oneshot::new(run_time, callback, fake_now_utc);
+        let next_runs: Vec<DateTime<Utc>> = oneshot.next_runs(1);
+
+        assert_eq!(next_runs.len(), 0);
+    }
 }
