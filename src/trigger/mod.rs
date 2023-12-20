@@ -3,8 +3,9 @@ mod tests;
 pub mod weekly;
 
 use chrono::{DateTime, Duration, TimeZone};
+use dyn_clone::{clone_trait_object, DynClone};
 
-pub trait Trigger<Tz: TimeZone> {
+pub trait Trigger<Tz: TimeZone>: DynClone {
     fn next_runs(&self, _n: usize) -> Option<Vec<DateTime<Tz>>> {
         None
     }
@@ -13,3 +14,5 @@ pub trait Trigger<Tz: TimeZone> {
         None
     }
 }
+
+clone_trait_object!(<Tz: TimeZone> Trigger<Tz>);

@@ -29,7 +29,6 @@ mod tests {
             "test".to_string(),
             callback,
             vec![Box::new(weekly), Box::new(oneshot)],
-            Utc::now,
         );
         let mut scheduler = Scheduler::<Utc>::new();
         scheduler.add_job(job);

@@ -1,6 +1,7 @@
 use super::Trigger;
 use chrono::{DateTime, Datelike, Duration, DurationRound, TimeZone};
 
+#[derive(Clone)]
 pub struct Weekly<Tz: TimeZone> {
     weekdays: [bool; 7],
     time: Duration,
@@ -16,9 +17,6 @@ impl<Tz: TimeZone> Weekly<Tz> {
         }
     }
 }
-
-unsafe impl<Tz: TimeZone> Sync for Weekly<Tz> {}
-unsafe impl<Tz: TimeZone> Send for Weekly<Tz> {}
 
 impl<Tz: TimeZone> Trigger<Tz> for Weekly<Tz> {
     fn next_runs(&self, n: usize) -> Option<Vec<DateTime<Tz>>> {
