@@ -5,13 +5,7 @@ mod tests {
     use crate::trigger::oneshot::Oneshot;
     use crate::trigger::weekly::Weekly;
 
-    use chrono::{DateTime, Duration, Utc};
-
-    fn fake_now_utc() -> DateTime<Utc> {
-        DateTime::parse_from_rfc3339("2023-01-01T00:00:00Z")
-            .unwrap()
-            .into()
-    }
+    use chrono::{Duration, Utc};
 
     fn callback() {
         println!("yeayah");
