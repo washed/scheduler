@@ -3,7 +3,7 @@ mod tests {
     use crate::trigger::oneshot::Oneshot;
     use crate::trigger::weekly::Weekly;
     use crate::trigger::Trigger;
-    use chrono::{DateTime, Duration, Local, TimeZone, Utc};
+    use chrono::{DateTime, Duration, Local, Utc};
 
     fn fake_now_utc() -> DateTime<Utc> {
         DateTime::parse_from_rfc3339("2023-01-01T00:00:00Z")
@@ -29,19 +29,14 @@ mod tests {
             .into()
     }
 
-    fn callback<Tz: TimeZone>(_dt: DateTime<Tz>) {
-        println!("called!");
-    }
-
     #[test]
     fn it_works_utc() {
         let weekly = Weekly::new(
             [false, true, true, true, true, true, true],
             Duration::hours(12),
-            callback,
             fake_now_utc,
         );
-        let ttnr: Vec<DateTime<Utc>> = weekly.next_runs(9);
+        let ttnr: Vec<DateTime<Utc>> = weekly.next_runs(9).unwrap();
 
         let expected_ttnr_utc: Vec<DateTime<Utc>> = [
             "2023-01-01T12:00:00Z",
@@ -65,10 +60,9 @@ mod tests {
         let weekly = Weekly::new(
             [false, true, true, true, true, true, true],
             Duration::hours(12),
-            callback,
             fake_now_local,
         );
-        let ttnr: Vec<DateTime<Local>> = weekly.next_runs(9);
+        let ttnr: Vec<DateTime<Local>> = weekly.next_runs(9).unwrap();
 
         let expected_ttnr_local: Vec<DateTime<Local>> = [
             "2023-01-01T12:00:00+01:00",
@@ -92,10 +86,9 @@ mod tests {
         let weekly = Weekly::new(
             [false, true, true, true, true, true, true],
             Duration::hours(12),
-            callback,
             fake_now_local_dst_spring,
         );
-        let ttnr: Vec<DateTime<Local>> = weekly.next_runs(9);
+        let ttnr: Vec<DateTime<Local>> = weekly.next_runs(9).unwrap();
 
         let expected_ttnr_local: Vec<DateTime<Local>> = [
             "2023-03-24T12:00:00+01:00",
@@ -119,10 +112,9 @@ mod tests {
         let weekly = Weekly::new(
             [false, true, true, true, true, true, true],
             Duration::hours(12),
-            callback,
             fake_now_local_dst_autumn,
         );
-        let ttnr: Vec<DateTime<Local>> = weekly.next_runs(9);
+        let ttnr: Vec<DateTime<Local>> = weekly.next_runs(9).unwrap();
 
         let expected_ttnr_local: Vec<DateTime<Local>> = [
             "2023-10-27T12:00:00+02:00",
@@ -146,19 +138,18 @@ mod tests {
         let weekly = Weekly::new(
             [false, false, false, false, false, false, false],
             Duration::hours(12),
-            callback,
             fake_now_utc,
         );
-        let ttnr: Vec<DateTime<Utc>> = weekly.next_runs(9);
+        let ttnr = weekly.next_runs(9);
 
-        assert_eq!(ttnr.len(), 0);
+        assert_eq!(ttnr, None);
     }
 
     #[test]
     fn oneshot_future() {
         let run_time = fake_now_utc() + Duration::hours(1);
-        let oneshot = Oneshot::new(run_time, callback, fake_now_utc);
-        let next_runs: Vec<DateTime<Utc>> = oneshot.next_runs(1);
+        let oneshot = Oneshot::new(run_time, fake_now_utc);
+        let next_runs: Vec<DateTime<Utc>> = oneshot.next_runs(1).unwrap();
 
         assert_eq!(next_runs.len(), 1);
         assert_eq!(next_runs[0], run_time);
@@ -167,9 +158,9 @@ mod tests {
     #[test]
     fn oneshot_past() {
         let run_time = fake_now_utc() - Duration::hours(1);
-        let oneshot = Oneshot::new(run_time, callback, fake_now_utc);
-        let next_runs: Vec<DateTime<Utc>> = oneshot.next_runs(1);
+        let oneshot = Oneshot::new(run_time, fake_now_utc);
+        let next_runs = oneshot.next_runs(1);
 
-        assert_eq!(next_runs.len(), 0);
+        assert_eq!(next_runs, None);
     }
 }

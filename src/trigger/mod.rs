@@ -5,11 +5,11 @@ pub mod weekly;
 use chrono::{DateTime, Duration, TimeZone};
 
 pub trait Trigger<Tz: TimeZone> {
-    fn next_runs(&self, _n: usize) -> Vec<DateTime<Tz>> {
-        Vec::<DateTime<Tz>>::new()
+    fn next_runs(&self, _n: usize) -> Option<Vec<DateTime<Tz>>> {
+        None
     }
 
-    fn time_to_next_runs(&self, _n: usize) -> Vec<Duration> {
-        Vec::<Duration>::new()
+    fn time_to_next_runs(&self, _n: usize) -> Option<Vec<Duration>> {
+        None
     }
 }

@@ -4,40 +4,35 @@ use chrono::{DateTime, Duration, TimeZone};
 pub struct Oneshot<Tz: TimeZone> {
     datetime: DateTime<Tz>,
     now: fn() -> DateTime<Tz>,
-
-    pub callback: fn(dt: DateTime<Tz>),
 }
 
 impl<Tz: TimeZone> Oneshot<Tz> {
-    pub fn new(
-        datetime: DateTime<Tz>,
-        callback: fn(dt: DateTime<Tz>),
-        now: fn() -> DateTime<Tz>,
-    ) -> Self {
-        Self {
-            datetime,
-            callback,
-            now,
-        }
+    pub fn new(datetime: DateTime<Tz>, now: fn() -> DateTime<Tz>) -> Self {
+        Self { datetime, now }
     }
 }
 
+unsafe impl<Tz: TimeZone> Sync for Oneshot<Tz> {}
+unsafe impl<Tz: TimeZone> Send for Oneshot<Tz> {}
+
 impl<Tz: TimeZone> Trigger<Tz> for Oneshot<Tz> {
-    fn next_runs(&self, _n: usize) -> Vec<DateTime<Tz>> {
+    fn next_runs(&self, _n: usize) -> Option<Vec<DateTime<Tz>>> {
         match self.datetime < (self.now)() {
-            true => Vec::<DateTime<Tz>>::new(),
-            false => vec![self.datetime.clone()],
+            true => None,
+            false => Some(vec![self.datetime.clone()]),
         }
     }
 
-    fn time_to_next_runs(&self, n: usize) -> Vec<Duration> {
-        let next_runs = self.next_runs(n);
-        next_runs
-            .into_iter()
-            .map(move |dt| {
-                let now = (self.now)();
-                dt - now
-            })
-            .collect()
+    fn time_to_next_runs(&self, n: usize) -> Option<Vec<Duration>> {
+        let next_runs = self.next_runs(n)?;
+        Some(
+            next_runs
+                .into_iter()
+                .map(move |dt| {
+                    let now = (self.now)();
+                    dt - now
+                })
+                .collect(),
+        )
     }
 }
