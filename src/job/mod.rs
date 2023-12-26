@@ -3,7 +3,7 @@ use chrono::{DateTime, TimeZone, Utc};
 use crate::trigger::Trigger;
 
 use itertools::Itertools;
-use tokio::task::{self, JoinHandle};
+use tokio::task::JoinSet;
 use tokio::time::sleep;
 use tracing::debug;
 
@@ -11,7 +11,6 @@ pub struct Job<Tz: TimeZone> {
     pub name: String,
     pub callback: fn(),
     triggers: Vec<Box<dyn Trigger<Tz> + Send + Sync>>,
-    task: Option<JoinHandle<()>>,
 }
 
 impl<Tz: TimeZone + 'static> Job<Tz> {
@@ -24,7 +23,6 @@ impl<Tz: TimeZone + 'static> Job<Tz> {
             name,
             callback,
             triggers,
-            task: None,
         }
     }
 
@@ -44,14 +42,14 @@ impl<Tz: TimeZone + 'static> Job<Tz> {
     }
 
     fn start_task(
+        tasks: &mut JoinSet<()>,
         name: String,
         triggers: Vec<Box<dyn Trigger<Tz> + Send + Sync>>,
         callback: fn(),
-    ) -> JoinHandle<()>
-    where
+    ) where
         <Tz as TimeZone>::Offset: Send,
     {
-        task::spawn(async move {
+        tasks.spawn(async move {
             let triggers = triggers.to_vec();
             loop {
                 let next_run = Job::next_run(&triggers).unwrap(); // TODO: meh
@@ -66,15 +64,16 @@ impl<Tz: TimeZone + 'static> Job<Tz> {
                 debug!("executing {:?}", name);
                 callback();
             }
-        })
+        });
     }
 
-    pub fn run(&mut self)
+    pub fn run(&mut self, tasks: &mut JoinSet<()>)
     where
         <Tz as TimeZone>::Offset: Send,
     {
         let triggers = self.triggers.as_slice().to_vec();
-        self.task = Some(Job::start_task(
+        Some(Job::start_task(
+            tasks,
             self.name.to_owned(),
             triggers,
             self.callback,

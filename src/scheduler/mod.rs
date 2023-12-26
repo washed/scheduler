@@ -1,7 +1,8 @@
-use chrono::TimeZone;
-
 use crate::job::Job;
+use chrono::TimeZone;
+use tokio::task::JoinSet;
 mod tests;
+use tracing::{info, warn};
 
 pub struct Scheduler<Tz: TimeZone> {
     jobs: Vec<Job<Tz>>,
@@ -20,8 +21,20 @@ impl<Tz: TimeZone + 'static> Scheduler<Tz> {
     where
         <Tz as TimeZone>::Offset: Send,
     {
+        let mut tasks = JoinSet::<()>::new();
         for mut job in self.jobs {
-            job.run();
+            job.run(&mut tasks);
+        }
+
+        while tasks.len() > 0 {
+            match tasks.join_next().await {
+                Some(_task) => {
+                    warn!("task ended unexpectedly")
+                }
+                None => {
+                    info!("no more tasks to run, shutting down")
+                }
+            }
         }
     }
 }
