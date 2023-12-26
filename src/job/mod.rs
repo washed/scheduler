@@ -5,6 +5,7 @@ use crate::trigger::Trigger;
 use itertools::Itertools;
 use tokio::task::{self, JoinHandle};
 use tokio::time::sleep;
+use tracing::debug;
 
 pub struct Job<Tz: TimeZone> {
     pub name: String,
@@ -58,11 +59,11 @@ impl<Tz: TimeZone + 'static> Job<Tz> {
                 let sleep_time = next_run_utc - Utc::now();
 
                 let next_run_str = next_run.to_rfc3339();
-                println!("Next run of {name} at: {next_run_str}. Sleeping for {sleep_time}");
+                debug!("Next run of {name} at: {next_run_str}. Sleeping for {sleep_time}");
 
                 let sleep_time_std = sleep_time.to_std().unwrap();
                 sleep(sleep_time_std).await;
-                println!("executing {:?}", name);
+                debug!("executing {:?}", name);
                 callback();
             }
         })
