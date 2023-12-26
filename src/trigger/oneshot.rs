@@ -1,5 +1,6 @@
 use super::Trigger;
-use chrono::{DateTime, Duration, TimeZone};
+use chrono::{DateTime, TimeZone};
+use std::time::Duration;
 
 #[derive(Clone)]
 pub struct Oneshot<Tz: TimeZone> {
@@ -28,7 +29,7 @@ impl<Tz: TimeZone> Trigger<Tz> for Oneshot<Tz> {
                 .into_iter()
                 .map(move |dt| {
                     let now = (self.now)();
-                    dt - now
+                    (dt - now).to_std().unwrap()
                 })
                 .collect(),
         )

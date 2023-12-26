@@ -1,5 +1,6 @@
 use super::Trigger;
-use chrono::{DateTime, Datelike, Duration, DurationRound, TimeZone};
+use chrono::{DateTime, Datelike, DurationRound, TimeZone, Duration as ChronoDuration};
+use std::time::Duration;
 
 #[derive(Clone)]
 pub struct Weekly<Tz: TimeZone> {
@@ -34,11 +35,11 @@ impl<Tz: TimeZone> Trigger<Tz> for Weekly<Tz> {
                         let weekday_offset = weekday.num_days_from_monday() as i64;
                         let now_midnight = now
                             .clone()
-                            .duration_round(Duration::days(1))
+                            .duration_round(ChronoDuration::days(1))
                             .unwrap()
                             .naive_local();
                         let next_dt_naive =
-                            (now_midnight + Duration::days(i as i64 - weekday_offset) + self.time)
+                            (now_midnight + ChronoDuration::days(i as i64 - weekday_offset) + self.time)
                                 .and_local_timezone(now.timezone());
                         match next_dt_naive {
                             chrono::LocalResult::None => None,
@@ -64,7 +65,7 @@ impl<Tz: TimeZone> Trigger<Tz> for Weekly<Tz> {
                 .into_iter()
                 .map(move |dt| {
                     let now = (self.now)();
-                    dt - now
+                    (dt - now).to_std().unwrap()
                 })
                 .collect(),
         )

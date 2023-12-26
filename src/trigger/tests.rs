@@ -3,7 +3,7 @@ mod tests {
     use crate::trigger::oneshot::Oneshot;
     use crate::trigger::weekly::Weekly;
     use crate::trigger::Trigger;
-    use chrono::{DateTime, Duration, Local, Utc};
+    use chrono::{DateTime, Local, Duration, Utc};
 
     fn fake_now_utc() -> DateTime<Utc> {
         DateTime::parse_from_rfc3339("2023-01-01T00:00:00Z")
@@ -33,7 +33,7 @@ mod tests {
     fn it_works_utc() {
         let weekly = Weekly::new(
             [false, true, true, true, true, true, true],
-            Duration::hours(12),
+            Duration::hours(12).to_std().unwrap(),
             fake_now_utc,
         );
         let ttnr: Vec<DateTime<Utc>> = weekly.next_runs(9).unwrap();
@@ -59,7 +59,7 @@ mod tests {
     fn it_works_local() {
         let weekly = Weekly::new(
             [false, true, true, true, true, true, true],
-            Duration::hours(12),
+            Duration::hours(12).to_std().unwrap(),
             fake_now_local,
         );
         let ttnr: Vec<DateTime<Local>> = weekly.next_runs(9).unwrap();
@@ -85,7 +85,7 @@ mod tests {
     fn it_works_local_dst_change_spring() {
         let weekly = Weekly::new(
             [false, true, true, true, true, true, true],
-            Duration::hours(12),
+            Duration::hours(12).to_std().unwrap(),
             fake_now_local_dst_spring,
         );
         let ttnr: Vec<DateTime<Local>> = weekly.next_runs(9).unwrap();
@@ -111,7 +111,7 @@ mod tests {
     fn it_works_local_dst_change_autumn() {
         let weekly = Weekly::new(
             [false, true, true, true, true, true, true],
-            Duration::hours(12),
+            Duration::hours(12).to_std().unwrap(),
             fake_now_local_dst_autumn,
         );
         let ttnr: Vec<DateTime<Local>> = weekly.next_runs(9).unwrap();
@@ -137,7 +137,7 @@ mod tests {
     fn no_runs() {
         let weekly = Weekly::new(
             [false, false, false, false, false, false, false],
-            Duration::hours(12),
+            Duration::hours(12).to_std().unwrap(),
             fake_now_utc,
         );
         let ttnr = weekly.next_runs(9);

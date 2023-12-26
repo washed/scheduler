@@ -1,8 +1,10 @@
 pub mod oneshot;
-mod tests;
 pub mod weekly;
+pub mod interval;
+mod tests;
 
-use chrono::{DateTime, Duration, TimeZone};
+use chrono::{DateTime, TimeZone};
+use std::time::Duration;
 use dyn_clone::{clone_trait_object, DynClone};
 
 pub trait Trigger<Tz: TimeZone>: DynClone {
