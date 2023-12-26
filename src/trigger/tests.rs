@@ -1,9 +1,10 @@
 #[cfg(test)]
 mod tests {
+    use crate::trigger::interval::Interval;
     use crate::trigger::oneshot::Oneshot;
     use crate::trigger::weekly::Weekly;
     use crate::trigger::Trigger;
-    use chrono::{DateTime, Local, Duration, Utc};
+    use chrono::{format::InternalFixed, DateTime, Duration, Local, Utc};
 
     fn fake_now_utc() -> DateTime<Utc> {
         DateTime::parse_from_rfc3339("2023-01-01T00:00:00Z")
@@ -162,5 +163,24 @@ mod tests {
         let next_runs = oneshot.next_runs(1);
 
         assert_eq!(next_runs, None);
+    }
+
+    #[test]
+    fn interval() {
+        let interval = Interval::new(Duration::seconds(1).to_std().unwrap(), fake_now_utc);
+        let next_runs = interval.next_runs(5).unwrap();
+
+        let expected_next_runs: Vec<DateTime<Local>> = [
+            "2023-01-01T00:00:01Z",
+            "2023-01-01T00:00:02Z",
+            "2023-01-01T00:00:03Z",
+            "2023-01-01T00:00:04Z",
+            "2023-01-01T00:00:05Z",
+        ]
+        .iter()
+        .map(|dts| DateTime::parse_from_rfc3339(dts).unwrap().into())
+        .collect();
+
+        assert_eq!(next_runs, expected_next_runs)
     }
 }
