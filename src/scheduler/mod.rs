@@ -24,9 +24,10 @@ impl Scheduler {
 
         while tasks.len() > 0 {
             match tasks.join_next().await {
-                Some(_task) => {
-                    warn!("task ended unexpectedly")
-                }
+                Some(result) => match result {
+                    Ok(_) => {}
+                    Err(error) => warn!("task ended unexpectedly: {}", error),
+                },
                 None => {
                     info!("no more tasks to run, shutting down")
                 }
