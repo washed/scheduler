@@ -238,4 +238,19 @@ mod tests {
 
         assert_eq!(next_runs, expected_next_runs)
     }
+
+    #[test]
+    fn interval_from_json() {
+        set_fake_time(DEFAULT_UTC);
+        let interval = Interval::new(Duration::seconds(1).to_std().unwrap());
+        let _j = serde_json::to_string(&interval).unwrap();
+
+        let _interval: Interval = serde_json::from_str(
+            r#"{
+            "interval": {"secs":1,"nanos":0},
+            "last_run": null
+        }"#,
+        )
+        .unwrap();
+    }
 }

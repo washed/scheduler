@@ -1,9 +1,10 @@
 use super::{NowUtc, Trigger};
 use chrono::{DateTime, Datelike, Duration as ChronoDuration, DurationRound, Utc};
 use chrono_tz::Tz;
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Weekly {
     weekdays: [bool; 7],
     time: Duration,

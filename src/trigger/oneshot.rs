@@ -1,8 +1,9 @@
 use super::{NowUtc, Trigger};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Oneshot {
     datetime: DateTime<Utc>,
 }
