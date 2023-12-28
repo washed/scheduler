@@ -1,26 +1,26 @@
-use super::Trigger;
-use chrono::{DateTime, Datelike, Duration as ChronoDuration, DurationRound, TimeZone};
+use super::{NowUtc, Trigger};
+use chrono::{DateTime, Datelike, Duration as ChronoDuration, DurationRound, Utc};
+use chrono_tz::Tz;
 use std::time::Duration;
 
 #[derive(Clone)]
-pub struct Weekly<Tz: TimeZone> {
+pub struct Weekly {
     weekdays: [bool; 7],
     time: Duration,
-    now: fn() -> DateTime<Tz>,
+    tz: Tz,
 }
 
-impl<Tz: TimeZone> Weekly<Tz> {
-    pub fn new(weekdays: [bool; 7], time: Duration, now: fn() -> DateTime<Tz>) -> Self {
-        Self {
-            weekdays,
-            time,
-            now,
-        }
+impl Weekly {
+    pub fn new(weekdays: [bool; 7], time: Duration, tz: Tz) -> Self {
+        Self { weekdays, time, tz }
     }
 }
 
-impl<Tz: TimeZone> Trigger<Tz> for Weekly<Tz> {
-    fn next_runs(&self, n: usize) -> Option<Vec<DateTime<Tz>>> {
+#[cfg(not(test))]
+impl NowUtc for Weekly {}
+
+impl Trigger for Weekly {
+    fn next_runs(&self, n: usize) -> Option<Vec<DateTime<Utc>>> {
         match self.weekdays.iter().all(|e| !e) {
             true => None,
             false => Some(
@@ -28,9 +28,9 @@ impl<Tz: TimeZone> Trigger<Tz> for Weekly<Tz> {
                     .iter()
                     .cycle()
                     .enumerate()
-                    .skip((self.now)().weekday().num_days_from_monday() as usize)
+                    .skip(Self::now_utc().weekday().num_days_from_monday() as usize)
                     .filter_map(move |(i, e)| {
-                        let now = (self.now)();
+                        let now = Self::now_utc().with_timezone(&self.tz);
                         let weekday = now.weekday();
                         let weekday_offset = weekday.num_days_from_monday() as i64;
                         let now_midnight = now
@@ -41,16 +41,16 @@ impl<Tz: TimeZone> Trigger<Tz> for Weekly<Tz> {
                         let next_dt_naive = (now_midnight
                             + ChronoDuration::days(i as i64 - weekday_offset)
                             + self.time)
-                            .and_local_timezone(now.timezone());
+                            .and_local_timezone(self.tz);
                         match next_dt_naive {
                             chrono::LocalResult::None => None,
                             chrono::LocalResult::Ambiguous(_, _) => None,
                             chrono::LocalResult::Single(res) => Some((*e, res)),
                         }
                     })
-                    .skip_while(move |(_e, dt)| *dt < (self.now)())
+                    .skip_while(move |(_e, dt)| *dt < Self::now_utc())
                     .filter_map(|(e, dt)| match e {
-                        true => Some(dt),
+                        true => Some(dt.with_timezone(&Utc)),
                         false => None,
                     })
                     .take(n)
@@ -65,7 +65,7 @@ impl<Tz: TimeZone> Trigger<Tz> for Weekly<Tz> {
             next_runs
                 .into_iter()
                 .map(move |dt| {
-                    let now = (self.now)();
+                    let now = Self::now_utc();
                     (dt - now).to_std().unwrap()
                 })
                 .collect(),

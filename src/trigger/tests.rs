@@ -3,39 +3,72 @@ mod tests {
     use crate::trigger::interval::Interval;
     use crate::trigger::oneshot::Oneshot;
     use crate::trigger::weekly::Weekly;
-    use crate::trigger::Trigger;
+    use crate::trigger::{NowUtc, Trigger};
     use chrono::{DateTime, Duration, Local, Utc};
+    use chrono_tz::{Europe::Berlin, UTC};
+    use std::sync::{Arc, RwLock};
 
-    fn fake_now_utc() -> DateTime<Utc> {
-        DateTime::parse_from_rfc3339("2023-01-01T00:00:00Z")
+    const DEFAULT_UTC: &str = "2023-01-01T00:00:00Z";
+    const DST_SPRING_LOCAL: &str = "2023-03-24T01:00:00+01:00";
+    const DST_AUTUMN_LOCAL: &str = "2023-10-27T01:00:00+01:00";
+
+    fn dt_parse(dt_str: &str) -> DateTime<Utc> {
+        DateTime::parse_from_rfc3339(dt_str)
             .unwrap()
-            .into()
+            .with_timezone(&Utc)
     }
 
-    fn fake_now_local() -> DateTime<Local> {
-        DateTime::parse_from_rfc3339("2023-01-01T01:00:00+01:00")
-            .unwrap()
-            .into()
+    // borrowed with gratitude from https://blog.sentry.io/you-cant-rust-that/
+    #[derive(Default)]
+    struct Config {
+        pub fake_time: DateTime<Utc>,
     }
 
-    fn fake_now_local_dst_spring() -> DateTime<Local> {
-        DateTime::parse_from_rfc3339("2023-03-24T01:00:00+01:00")
-            .unwrap()
-            .into()
+    impl Config {
+        pub fn current() -> Arc<Config> {
+            CURRENT_CONFIG.with(|c| c.read().unwrap().clone())
+        }
+        pub fn make_current(self) {
+            CURRENT_CONFIG.with(|c| *c.write().unwrap() = Arc::new(self))
+        }
     }
 
-    fn fake_now_local_dst_autumn() -> DateTime<Local> {
-        DateTime::parse_from_rfc3339("2023-10-27T01:00:00+01:00")
-            .unwrap()
-            .into()
+    thread_local! {
+        static CURRENT_CONFIG: RwLock<Arc<Config>> = RwLock::new(Default::default());
+    }
+
+    fn set_fake_time(dt_str: &str) {
+        Config {
+            fake_time: dt_parse(dt_str),
+        }
+        .make_current();
+    }
+
+    impl NowUtc for Oneshot {
+        fn now_utc() -> DateTime<Utc> {
+            Config::current().fake_time
+        }
+    }
+
+    impl NowUtc for Interval {
+        fn now_utc() -> DateTime<Utc> {
+            Config::current().fake_time
+        }
+    }
+
+    impl NowUtc for Weekly {
+        fn now_utc() -> DateTime<Utc> {
+            Config::current().fake_time
+        }
     }
 
     #[test]
     fn it_works_utc() {
+        set_fake_time(DEFAULT_UTC);
         let weekly = Weekly::new(
             [false, true, true, true, true, true, true],
             Duration::hours(12).to_std().unwrap(),
-            fake_now_utc,
+            UTC,
         );
         let ttnr: Vec<DateTime<Utc>> = weekly.next_runs(9).unwrap();
 
@@ -58,14 +91,15 @@ mod tests {
 
     #[test]
     fn it_works_local() {
+        set_fake_time(DEFAULT_UTC);
         let weekly = Weekly::new(
             [false, true, true, true, true, true, true],
             Duration::hours(12).to_std().unwrap(),
-            fake_now_local,
+            Berlin,
         );
-        let ttnr: Vec<DateTime<Local>> = weekly.next_runs(9).unwrap();
+        let ttnr: Vec<DateTime<Utc>> = weekly.next_runs(9).unwrap();
 
-        let expected_ttnr_local: Vec<DateTime<Local>> = [
+        let expected_ttnr_local: Vec<DateTime<Utc>> = [
             "2023-01-01T12:00:00+01:00",
             "2023-01-03T12:00:00+01:00",
             "2023-01-04T12:00:00+01:00",
@@ -77,21 +111,27 @@ mod tests {
             "2023-01-11T12:00:00+01:00",
         ]
         .iter()
-        .map(|dts| DateTime::parse_from_rfc3339(dts).unwrap().into())
+        .map(|dts| {
+            DateTime::parse_from_rfc3339(dts)
+                .unwrap()
+                .with_timezone(&Utc)
+                .into()
+        })
         .collect();
         assert_eq!(ttnr, expected_ttnr_local);
     }
 
     #[test]
     fn it_works_local_dst_change_spring() {
+        set_fake_time(DST_SPRING_LOCAL);
         let weekly = Weekly::new(
             [false, true, true, true, true, true, true],
             Duration::hours(12).to_std().unwrap(),
-            fake_now_local_dst_spring,
+            Berlin,
         );
-        let ttnr: Vec<DateTime<Local>> = weekly.next_runs(9).unwrap();
+        let ttnr: Vec<DateTime<Utc>> = weekly.next_runs(9).unwrap();
 
-        let expected_ttnr_local: Vec<DateTime<Local>> = [
+        let expected_ttnr_local: Vec<DateTime<Utc>> = [
             "2023-03-24T12:00:00+01:00",
             "2023-03-25T12:00:00+01:00",
             "2023-03-26T12:00:00+02:00",
@@ -103,21 +143,27 @@ mod tests {
             "2023-04-02T12:00:00+02:00",
         ]
         .iter()
-        .map(|dts| DateTime::parse_from_rfc3339(dts).unwrap().into())
+        .map(|dts| {
+            DateTime::parse_from_rfc3339(dts)
+                .unwrap()
+                .with_timezone(&Utc)
+                .into()
+        })
         .collect();
         assert_eq!(ttnr, expected_ttnr_local);
     }
 
     #[test]
     fn it_works_local_dst_change_autumn() {
+        set_fake_time(DST_AUTUMN_LOCAL);
         let weekly = Weekly::new(
             [false, true, true, true, true, true, true],
             Duration::hours(12).to_std().unwrap(),
-            fake_now_local_dst_autumn,
+            Berlin,
         );
-        let ttnr: Vec<DateTime<Local>> = weekly.next_runs(9).unwrap();
+        let ttnr: Vec<DateTime<Utc>> = weekly.next_runs(9).unwrap();
 
-        let expected_ttnr_local: Vec<DateTime<Local>> = [
+        let expected_ttnr_local: Vec<DateTime<Utc>> = [
             "2023-10-27T12:00:00+02:00",
             "2023-10-28T12:00:00+02:00",
             "2023-10-29T12:00:00+01:00",
@@ -129,17 +175,23 @@ mod tests {
             "2023-11-05T12:00:00+01:00",
         ]
         .iter()
-        .map(|dts| DateTime::parse_from_rfc3339(dts).unwrap().into())
+        .map(|dts| {
+            DateTime::parse_from_rfc3339(dts)
+                .unwrap()
+                .with_timezone(&Utc)
+                .into()
+        })
         .collect();
         assert_eq!(ttnr, expected_ttnr_local);
     }
 
     #[test]
     fn no_runs() {
+        set_fake_time(DEFAULT_UTC);
         let weekly = Weekly::new(
             [false, false, false, false, false, false, false],
             Duration::hours(12).to_std().unwrap(),
-            fake_now_utc,
+            UTC,
         );
         let ttnr = weekly.next_runs(9);
 
@@ -148,8 +200,9 @@ mod tests {
 
     #[test]
     fn oneshot_future() {
-        let run_time = fake_now_utc() + Duration::hours(1);
-        let oneshot = Oneshot::new(run_time, fake_now_utc);
+        set_fake_time(DEFAULT_UTC);
+        let run_time = dt_parse(DEFAULT_UTC) + Duration::hours(1);
+        let oneshot = Oneshot::new(run_time);
         let next_runs: Vec<DateTime<Utc>> = oneshot.next_runs(1).unwrap();
 
         assert_eq!(next_runs.len(), 1);
@@ -158,8 +211,9 @@ mod tests {
 
     #[test]
     fn oneshot_past() {
-        let run_time = fake_now_utc() - Duration::hours(1);
-        let oneshot = Oneshot::new(run_time, fake_now_utc);
+        set_fake_time(DEFAULT_UTC);
+        let run_time = dt_parse(DEFAULT_UTC) - Duration::hours(1);
+        let oneshot = Oneshot::new(run_time);
         let next_runs = oneshot.next_runs(1);
 
         assert_eq!(next_runs, None);
@@ -167,7 +221,8 @@ mod tests {
 
     #[test]
     fn interval() {
-        let interval = Interval::new(Duration::seconds(1).to_std().unwrap(), fake_now_utc);
+        set_fake_time(DEFAULT_UTC);
+        let interval = Interval::new(Duration::seconds(1).to_std().unwrap());
         let next_runs = interval.next_runs(5).unwrap();
 
         let expected_next_runs: Vec<DateTime<Local>> = [

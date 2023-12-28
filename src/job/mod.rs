@@ -1,4 +1,4 @@
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, Utc};
 
 use crate::trigger::Trigger;
 
@@ -7,17 +7,17 @@ use tokio::task::JoinSet;
 use tokio::time::sleep;
 use tracing::debug;
 
-pub struct Job<Tz: TimeZone> {
+pub struct Job {
     pub name: String,
     pub callback: fn(),
-    triggers: Vec<Box<dyn Trigger<Tz> + Send + Sync>>,
+    triggers: Vec<Box<dyn Trigger + Send + Sync>>,
 }
 
-impl<Tz: TimeZone + 'static> Job<Tz> {
+impl Job {
     pub fn new(
         name: String,
         callback: fn(),
-        triggers: Vec<Box<dyn Trigger<Tz> + Send + Sync>>,
+        triggers: Vec<Box<dyn Trigger + Send + Sync>>,
     ) -> Self {
         Self {
             name,
@@ -26,10 +26,10 @@ impl<Tz: TimeZone + 'static> Job<Tz> {
         }
     }
 
-    pub fn next_run(triggers: &Vec<Box<dyn Trigger<Tz> + Send + Sync>>) -> Option<DateTime<Tz>> {
+    pub fn next_run(triggers: &Vec<Box<dyn Trigger + Send + Sync>>) -> Option<DateTime<Utc>> {
         triggers
             .iter()
-            .filter_map(|t: &Box<dyn Trigger<Tz> + Send + Sync>| {
+            .filter_map(|t: &Box<dyn Trigger + Send + Sync>| {
                 let next_run = t.next_runs(1);
                 match next_run {
                     Some(next_run) => Some(next_run[0].to_owned()),
@@ -44,11 +44,9 @@ impl<Tz: TimeZone + 'static> Job<Tz> {
     fn start_task(
         tasks: &mut JoinSet<()>,
         name: String,
-        triggers: Vec<Box<dyn Trigger<Tz> + Send + Sync>>,
+        triggers: Vec<Box<dyn Trigger + Send + Sync>>,
         callback: fn(),
-    ) where
-        <Tz as TimeZone>::Offset: Send,
-    {
+    ) {
         tasks.spawn(async move {
             let triggers = triggers.to_vec();
             loop {
@@ -67,10 +65,7 @@ impl<Tz: TimeZone + 'static> Job<Tz> {
         });
     }
 
-    pub fn run(&mut self, tasks: &mut JoinSet<()>)
-    where
-        <Tz as TimeZone>::Offset: Send,
-    {
+    pub fn run(&mut self, tasks: &mut JoinSet<()>) {
         let triggers = self.triggers.as_slice().to_vec();
         Some(Job::start_task(
             tasks,

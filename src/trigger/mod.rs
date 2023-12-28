@@ -3,12 +3,12 @@ pub mod oneshot;
 mod tests;
 pub mod weekly;
 
-use chrono::{DateTime, TimeZone};
+use chrono::{DateTime, Utc};
 use dyn_clone::{clone_trait_object, DynClone};
 use std::time::Duration;
 
-pub trait Trigger<Tz: TimeZone>: DynClone {
-    fn next_runs(&self, _n: usize) -> Option<Vec<DateTime<Tz>>> {
+pub trait Trigger: DynClone {
+    fn next_runs(&self, _n: usize) -> Option<Vec<DateTime<Utc>>> {
         None
     }
 
@@ -17,4 +17,10 @@ pub trait Trigger<Tz: TimeZone>: DynClone {
     }
 }
 
-clone_trait_object!(<Tz: TimeZone> Trigger<Tz>);
+clone_trait_object!(Trigger);
+
+pub trait NowUtc {
+    fn now_utc() -> DateTime<Utc> {
+        Utc::now()
+    }
+}

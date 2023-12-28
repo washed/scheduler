@@ -1,27 +1,28 @@
-use super::Trigger;
-use chrono::{DateTime, TimeZone};
+use super::{NowUtc, Trigger};
+use chrono::{DateTime, Utc};
 use std::time::Duration;
 
 #[derive(Clone)]
-pub struct Interval<Tz: TimeZone> {
+pub struct Interval {
     interval: std::time::Duration,
-    now: fn() -> DateTime<Tz>,
-    last_run: Option<DateTime<Tz>>,
+    last_run: Option<DateTime<Utc>>,
 }
 
-impl<Tz: TimeZone> Interval<Tz> {
-    pub fn new(interval: std::time::Duration, now: fn() -> DateTime<Tz>) -> Self {
+impl Interval {
+    pub fn new(interval: std::time::Duration) -> Self {
         Self {
             interval,
-            now,
             last_run: None,
         }
     }
 }
 
-impl<Tz: TimeZone> Trigger<Tz> for Interval<Tz> {
-    fn next_runs(&self, n: usize) -> Option<Vec<DateTime<Tz>>> {
-        let now = (self.now)();
+#[cfg(not(test))]
+impl NowUtc for Interval {}
+
+impl Trigger for Interval {
+    fn next_runs(&self, n: usize) -> Option<Vec<DateTime<Utc>>> {
+        let now = Self::now_utc();
         let interval_millis = self.interval.as_millis() as u64;
 
         let last_run = match &self.last_run {
@@ -49,7 +50,7 @@ impl<Tz: TimeZone> Trigger<Tz> for Interval<Tz> {
             next_runs
                 .into_iter()
                 .map(move |dt| {
-                    let now = (self.now)();
+                    let now = Utc::now();
                     (dt - now).to_std().unwrap()
                 })
                 .collect(),

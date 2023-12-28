@@ -1,22 +1,24 @@
-use super::Trigger;
-use chrono::{DateTime, TimeZone};
+use super::{NowUtc, Trigger};
+use chrono::{DateTime, Utc};
 use std::time::Duration;
 
 #[derive(Clone)]
-pub struct Oneshot<Tz: TimeZone> {
-    datetime: DateTime<Tz>,
-    now: fn() -> DateTime<Tz>,
+pub struct Oneshot {
+    datetime: DateTime<Utc>,
 }
 
-impl<Tz: TimeZone> Oneshot<Tz> {
-    pub fn new(datetime: DateTime<Tz>, now: fn() -> DateTime<Tz>) -> Self {
-        Self { datetime, now }
+impl Oneshot {
+    pub fn new(datetime: DateTime<Utc>) -> Self {
+        Self { datetime }
     }
 }
 
-impl<Tz: TimeZone> Trigger<Tz> for Oneshot<Tz> {
-    fn next_runs(&self, _n: usize) -> Option<Vec<DateTime<Tz>>> {
-        match self.datetime < (self.now)() {
+#[cfg(not(test))]
+impl NowUtc for Oneshot {}
+
+impl Trigger for Oneshot {
+    fn next_runs(&self, _n: usize) -> Option<Vec<DateTime<Utc>>> {
+        match self.datetime < Self::now_utc() {
             true => None,
             false => Some(vec![self.datetime.clone()]),
         }
@@ -28,8 +30,8 @@ impl<Tz: TimeZone> Trigger<Tz> for Oneshot<Tz> {
             next_runs
                 .into_iter()
                 .map(move |dt| {
-                    let now = (self.now)();
-                    (dt - now).to_std().unwrap()
+                    let now = Self::now_utc();
+                    (dt.with_timezone(&Utc) - now).to_std().unwrap()
                 })
                 .collect(),
         )

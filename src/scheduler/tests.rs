@@ -20,7 +20,7 @@ mod tests {
             Utc::now,
         );
         */
-        let oneshot = Oneshot::new(Utc::now() + std::time::Duration::from_secs(1), Utc::now);
+        let oneshot = Oneshot::new(Utc::now() + std::time::Duration::from_secs(1));
         let job = Job::new(
             "test".to_string(),
             callback,
@@ -29,7 +29,7 @@ mod tests {
                 Box::new(oneshot),
             ],
         );
-        let mut scheduler = Scheduler::<Utc>::new();
+        let mut scheduler = Scheduler::new();
         scheduler.add_job(job);
         scheduler.run().await;
     }
