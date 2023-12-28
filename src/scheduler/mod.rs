@@ -1,4 +1,4 @@
-use crate::job::Job;
+use crate::job::{Job, Result};
 use tokio::task::JoinSet;
 mod tests;
 use tracing::{info, warn};
@@ -17,7 +17,7 @@ impl Scheduler {
     }
 
     pub async fn run(self) {
-        let mut tasks = JoinSet::<()>::new();
+        let mut tasks = JoinSet::<Result<()>>::new();
         for mut job in self.jobs {
             job.run(&mut tasks);
         }

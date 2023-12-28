@@ -7,6 +7,19 @@ use tokio::task::JoinSet;
 use tokio::time::sleep;
 use tracing::debug;
 
+use std::fmt;
+
+pub type Result<T> = std::result::Result<T, NoMoreRunsError>;
+
+#[derive(Debug, Clone)]
+pub struct NoMoreRunsError;
+
+impl fmt::Display for NoMoreRunsError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "no more runs")
+    }
+}
+
 pub struct Job {
     pub name: String,
     pub callback: fn(),
@@ -42,7 +55,7 @@ impl Job {
     }
 
     fn start_task(
-        tasks: &mut JoinSet<()>,
+        tasks: &mut JoinSet<Result<()>>,
         name: String,
         triggers: Vec<Box<dyn Trigger + Send + Sync>>,
         callback: fn(),
@@ -50,7 +63,7 @@ impl Job {
         tasks.spawn(async move {
             let triggers = triggers.to_vec();
             loop {
-                let next_run = Job::next_run(&triggers).unwrap(); // TODO: meh
+                let next_run = Job::next_run(&triggers).ok_or(NoMoreRunsError)?;
                 let next_run_utc = next_run.with_timezone(&Utc);
                 let sleep_time = next_run_utc - Utc::now();
 
@@ -65,7 +78,7 @@ impl Job {
         });
     }
 
-    pub fn run(&mut self, tasks: &mut JoinSet<()>) {
+    pub fn run(&mut self, tasks: &mut JoinSet<Result<()>>) {
         let triggers = self.triggers.as_slice().to_vec();
         Some(Job::start_task(
             tasks,
