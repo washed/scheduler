@@ -1,17 +1,16 @@
-use chrono::{DateTime, Utc};
-
 use crate::trigger::Trigger;
 
+use chrono::{DateTime, Utc};
 use itertools::Itertools;
+use serde::Serialize;
+use std::fmt;
 use tokio::task::JoinSet;
 use tokio::time::sleep;
 use tracing::debug;
 
-use std::fmt;
-
 pub type Result<T> = std::result::Result<T, NoMoreRunsError>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct NoMoreRunsError;
 
 impl fmt::Display for NoMoreRunsError {

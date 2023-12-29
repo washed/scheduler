@@ -1,7 +1,7 @@
 use crate::job::{Job, Result};
 use tokio::task::JoinSet;
 mod tests;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 pub struct Scheduler {
     jobs: Vec<Job>,
@@ -25,8 +25,13 @@ impl Scheduler {
         while tasks.len() > 0 {
             match tasks.join_next().await {
                 Some(result) => match result {
-                    Ok(_) => {}
-                    Err(error) => warn!("task ended unexpectedly: {}", error),
+                    Ok(task_return) => match task_return {
+                        Ok(_) => {
+                            info!("task finished")
+                        }
+                        Err(error) => warn!(%error, "task returned with error"),
+                    },
+                    Err(error) => error!(%error, "task panicked"),
                 },
                 None => {
                     info!("no more tasks to run, shutting down")
