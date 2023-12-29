@@ -63,15 +63,14 @@ impl Job {
             let triggers = triggers.to_vec();
             loop {
                 let next_run = Job::next_run(&triggers).ok_or(NoMoreRunsError)?;
-                let next_run_utc = next_run.with_timezone(&Utc);
-                let sleep_time = next_run_utc - Utc::now();
+                let sleep_time = next_run - Utc::now();
+                // TODO: handle being late somehow
+                debug!(name, at = { next_run.to_rfc3339() }, "in" = %sleep_time, "next run");
+                let sleep_time = sleep_time.to_std().unwrap();
 
-                let next_run_str = next_run.to_rfc3339();
-                debug!("Next run of {name} at: {next_run_str}. Sleeping for {sleep_time}");
+                sleep(sleep_time).await;
 
-                let sleep_time_std = sleep_time.to_std().unwrap();
-                sleep(sleep_time_std).await;
-                debug!("executing {:?}", name);
+                debug!(name, "triggered");
                 callback();
             }
         });
