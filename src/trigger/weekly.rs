@@ -20,6 +20,7 @@ impl Weekly {
 #[cfg(not(test))]
 impl NowUtc for Weekly {}
 
+#[typetag::serde]
 impl Trigger for Weekly {
     fn next_runs(&self, n: usize) -> Option<Vec<DateTime<Utc>>> {
         match self.weekdays.iter().all(|e| !e) {

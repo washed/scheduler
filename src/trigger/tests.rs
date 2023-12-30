@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+    use crate::job::Job;
     use crate::trigger::interval::Interval;
     use crate::trigger::oneshot::Oneshot;
     use crate::trigger::weekly::Weekly;
@@ -19,9 +20,10 @@ mod tests {
     }
 
     // borrowed with gratitude from https://blog.sentry.io/you-cant-rust-that/
-    #[derive(Default)]
+    #[derive(Default, Debug)]
     struct Config {
-        pub fake_time: DateTime<Utc>,
+        pub fake_start_time: DateTime<Utc>,
+        pub start_time: Option<DateTime<Utc>>,
     }
 
     impl Config {
@@ -31,40 +33,63 @@ mod tests {
         pub fn make_current(self) {
             CURRENT_CONFIG.with(|c| *c.write().unwrap() = Arc::new(self))
         }
+
+        pub fn get_fake_now() -> DateTime<Utc> {
+            let config = Self::current();
+            let now = Utc::now();
+            if config.start_time.is_none() {
+                Self {
+                    fake_start_time: config.fake_start_time,
+                    start_time: Some(now),
+                }
+                .make_current();
+            }
+
+            let config = Self::current();
+
+            Self::current().fake_start_time + (now - config.start_time.unwrap())
+        }
     }
 
     thread_local! {
         static CURRENT_CONFIG: RwLock<Arc<Config>> = RwLock::new(Default::default());
     }
 
-    fn set_fake_time(dt_str: &str) {
+    fn set_start_time(dt_str: &str) {
         Config {
-            fake_time: dt_parse(dt_str),
+            fake_start_time: dt_parse(dt_str),
+            start_time: None,
         }
         .make_current();
     }
 
     impl NowUtc for Oneshot {
         fn now_utc() -> DateTime<Utc> {
-            Config::current().fake_time
+            Config::get_fake_now()
         }
     }
 
     impl NowUtc for Interval {
         fn now_utc() -> DateTime<Utc> {
-            Config::current().fake_time
+            Config::get_fake_now()
         }
     }
 
     impl NowUtc for Weekly {
         fn now_utc() -> DateTime<Utc> {
-            Config::current().fake_time
+            Config::get_fake_now()
+        }
+    }
+
+    impl NowUtc for Job {
+        fn now_utc() -> DateTime<Utc> {
+            Config::get_fake_now()
         }
     }
 
     #[test]
     fn it_works_utc() {
-        set_fake_time(DEFAULT_UTC);
+        set_start_time(DEFAULT_UTC);
         let weekly = Weekly::new(
             [false, true, true, true, true, true, true],
             Duration::hours(12).to_std().unwrap(),
@@ -91,7 +116,7 @@ mod tests {
 
     #[test]
     fn it_works_local() {
-        set_fake_time(DEFAULT_UTC);
+        set_start_time(DEFAULT_UTC);
         let weekly = Weekly::new(
             [false, true, true, true, true, true, true],
             Duration::hours(12).to_std().unwrap(),
@@ -123,7 +148,7 @@ mod tests {
 
     #[test]
     fn it_works_local_dst_change_spring() {
-        set_fake_time(DST_SPRING_LOCAL);
+        set_start_time(DST_SPRING_LOCAL);
         let weekly = Weekly::new(
             [false, true, true, true, true, true, true],
             Duration::hours(12).to_std().unwrap(),
@@ -155,7 +180,7 @@ mod tests {
 
     #[test]
     fn it_works_local_dst_change_autumn() {
-        set_fake_time(DST_AUTUMN_LOCAL);
+        set_start_time(DST_AUTUMN_LOCAL);
         let weekly = Weekly::new(
             [false, true, true, true, true, true, true],
             Duration::hours(12).to_std().unwrap(),
@@ -187,7 +212,7 @@ mod tests {
 
     #[test]
     fn no_runs() {
-        set_fake_time(DEFAULT_UTC);
+        set_start_time(DEFAULT_UTC);
         let weekly = Weekly::new(
             [false, false, false, false, false, false, false],
             Duration::hours(12).to_std().unwrap(),
@@ -200,7 +225,7 @@ mod tests {
 
     #[test]
     fn oneshot_future() {
-        set_fake_time(DEFAULT_UTC);
+        set_start_time(DEFAULT_UTC);
         let run_time = dt_parse(DEFAULT_UTC) + Duration::hours(1);
         let oneshot = Oneshot::new(run_time);
         let next_runs: Vec<DateTime<Utc>> = oneshot.next_runs(1).unwrap();
@@ -211,7 +236,7 @@ mod tests {
 
     #[test]
     fn oneshot_past() {
-        set_fake_time(DEFAULT_UTC);
+        set_start_time(DEFAULT_UTC);
         let run_time = dt_parse(DEFAULT_UTC) - Duration::hours(1);
         let oneshot = Oneshot::new(run_time);
         let next_runs = oneshot.next_runs(1);
@@ -221,7 +246,7 @@ mod tests {
 
     #[test]
     fn interval() {
-        set_fake_time(DEFAULT_UTC);
+        set_start_time(DEFAULT_UTC);
         let interval = Interval::new(Duration::seconds(1).to_std().unwrap());
         let next_runs = interval.next_runs(5).unwrap();
 
@@ -241,7 +266,7 @@ mod tests {
 
     #[test]
     fn interval_from_json() {
-        set_fake_time(DEFAULT_UTC);
+        set_start_time(DEFAULT_UTC);
         let interval = Interval::new(Duration::seconds(1).to_std().unwrap());
         let _j = serde_json::to_string(&interval).unwrap();
 

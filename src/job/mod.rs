@@ -1,8 +1,9 @@
-use crate::trigger::Trigger;
+mod tests;
+use crate::trigger::{NowUtc, Trigger};
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use itertools::Itertools;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use tokio::task::JoinSet;
 use tokio::time::sleep;
@@ -10,7 +11,7 @@ use tracing::debug;
 
 pub type Result<T> = std::result::Result<T, NoMoreRunsError>;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct NoMoreRunsError;
 
 impl fmt::Display for NoMoreRunsError {
@@ -19,11 +20,16 @@ impl fmt::Display for NoMoreRunsError {
     }
 }
 
+#[derive(Serialize)]
 pub struct Job {
     pub name: String,
-    pub callback: fn(),
+    #[serde(skip)]
+    callback: Option<fn()>,
     triggers: Vec<Box<dyn Trigger + Send + Sync>>,
 }
+
+#[cfg(not(test))]
+impl NowUtc for Job {}
 
 impl Job {
     pub fn new(
@@ -33,7 +39,7 @@ impl Job {
     ) -> Self {
         Self {
             name,
-            callback,
+            callback: Some(callback),
             triggers,
         }
     }
@@ -63,10 +69,12 @@ impl Job {
             let triggers = triggers.to_vec();
             loop {
                 let next_run = Job::next_run(&triggers).ok_or(NoMoreRunsError)?;
-                let sleep_time = next_run - Utc::now();
-                // TODO: handle being late somehow
+                let sleep_time = next_run - Self::now_utc();
                 debug!(name, at = { next_run.to_rfc3339() }, "in" = %sleep_time, "next run");
-                let sleep_time = sleep_time.to_std().unwrap();
+                let sleep_time = sleep_time
+                    .clamp(ChronoDuration::zero(), ChronoDuration::max_value())
+                    .to_std()
+                    .unwrap();
 
                 sleep(sleep_time).await;
 
@@ -82,7 +90,7 @@ impl Job {
             tasks,
             self.name.to_owned(),
             triggers,
-            self.callback,
+            self.callback.unwrap_or(|| {}),
         ));
     }
 }

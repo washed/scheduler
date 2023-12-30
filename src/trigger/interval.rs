@@ -21,6 +21,7 @@ impl Interval {
 #[cfg(not(test))]
 impl NowUtc for Interval {}
 
+#[typetag::serde]
 impl Trigger for Interval {
     fn next_runs(&self, n: usize) -> Option<Vec<DateTime<Utc>>> {
         let now = Self::now_utc();

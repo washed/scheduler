@@ -17,11 +17,14 @@ impl Oneshot {
 #[cfg(not(test))]
 impl NowUtc for Oneshot {}
 
+#[typetag::serde]
 impl Trigger for Oneshot {
     fn next_runs(&self, _n: usize) -> Option<Vec<DateTime<Utc>>> {
-        match self.datetime < Self::now_utc() {
-            true => None,
-            false => Some(vec![self.datetime.clone()]),
+        let now = Self::now_utc();
+        let foo = self.datetime >= now;
+        match self.datetime >= Self::now_utc() {
+            true => Some(vec![self.datetime.clone()]),
+            false => None,
         }
     }
 
