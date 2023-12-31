@@ -1,18 +1,21 @@
 #[cfg(test)]
 mod tests {
+    use crate::tests::fake_time::{dt_parse, set_start_time};
+    use crate::tests::tests::DEFAULT_UTC;
+
     use crate::job::Job;
     use crate::scheduler::Scheduler;
-    use crate::trigger::oneshot::Oneshot;
-
-    use chrono::{DateTime, Utc};
+    use crate::trigger::Oneshot;
 
     fn callback() {
-        println!("scheduler test callback");
+        println!("test scheduler callback");
     }
 
     #[tokio::test]
     async fn it_works_utc() {
-        let oneshot = Oneshot::new(DateTime::<Utc>::default() + std::time::Duration::from_secs(1));
+        set_start_time(DEFAULT_UTC);
+        let test_time = dt_parse(DEFAULT_UTC);
+        let oneshot = Oneshot::new(test_time + std::time::Duration::from_secs(1));
         let job = Job::new("test".to_string(), callback, vec![Box::new(oneshot)]);
         let mut scheduler = Scheduler::new();
         scheduler.add_job(job);

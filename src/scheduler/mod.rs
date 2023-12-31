@@ -1,6 +1,5 @@
 use crate::job::{Job, Result};
 use tokio::task::JoinSet;
-mod tests;
 use tracing::{error, info, warn};
 
 pub struct Scheduler {

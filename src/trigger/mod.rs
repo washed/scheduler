@@ -1,6 +1,5 @@
 pub mod interval;
 pub mod oneshot;
-mod tests;
 pub mod weekly;
 
 use chrono::{DateTime, Utc};
@@ -25,3 +24,5 @@ pub trait NowUtc {
         Utc::now()
     }
 }
+
+pub use self::{interval::Interval, oneshot::Oneshot, weekly::Weekly};

@@ -1,19 +1,21 @@
 #[cfg(test)]
 mod tests {
+    use crate::tests::fake_time::{dt_parse, set_start_time};
+    use crate::tests::tests::DEFAULT_UTC;
+
     use crate::job::Job;
-    use crate::trigger::oneshot::Oneshot;
-    use serde_json;
+    use crate::trigger::Oneshot;
+    use chrono::{DateTime, Utc};
     use tokio::task::JoinSet;
 
-    use chrono::{DateTime, Utc};
-
     fn callback() {
-        println!("yeayah");
+        println!("test job callback");
     }
 
     #[tokio::test]
     async fn test_job_run() {
-        let oneshot = Oneshot::new(DateTime::<Utc>::default() + std::time::Duration::from_secs(1));
+        set_start_time(DEFAULT_UTC);
+        let oneshot = Oneshot::new(dt_parse(DEFAULT_UTC) + std::time::Duration::from_secs(1));
         let mut job = Job::new("test".to_string(), callback, vec![Box::new(oneshot)]);
 
         let mut join_set = JoinSet::new();

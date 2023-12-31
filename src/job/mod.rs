@@ -1,4 +1,3 @@
-mod tests;
 use crate::trigger::{NowUtc, Trigger};
 
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
