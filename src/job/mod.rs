@@ -23,7 +23,7 @@ impl TriggerCollection {
 }
 
 #[macro_export]
-macro_rules! triggerCollection {
+macro_rules! __triggerCollection__ {
     ( $( $x:expr ),* ) => ({
         use $crate::trigger::Trigger;
         use $crate::job::TriggerCollection;
@@ -37,6 +37,8 @@ macro_rules! triggerCollection {
         }
     });
 }
+
+pub(crate) use __triggerCollection__ as triggerCollection;
 
 impl fmt::Display for NoMoreRunsError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
