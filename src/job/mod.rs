@@ -24,11 +24,10 @@ impl TriggerCollection {
 
 #[macro_export]
 macro_rules! triggerCollection {
-    ( $( $x:expr ),* ) => {
+    ( $( $x:expr ),* ) => ({
+        use $crate::trigger::Trigger;
+        use $crate::job::TriggerCollection;
         {
-            use $crate::trigger::Trigger;
-            use $crate::job::TriggerCollection;
-
             let mut temp_set = std::collections::BTreeSet::new();
             $(
                 let boxed: std::boxed::Box<dyn Trigger + 'static> = std::boxed::Box::new($x);
@@ -36,7 +35,7 @@ macro_rules! triggerCollection {
             )*
             TriggerCollection(temp_set)
         }
-    };
+    });
 }
 
 impl fmt::Display for NoMoreRunsError {
