@@ -26,12 +26,15 @@ impl TriggerCollection {
 macro_rules! triggerCollection {
     ( $( $x:expr ),* ) => {
         {
+            use $crate::trigger::Trigger;
+            use $crate::job::TriggerCollection;
+
             let mut temp_set = std::collections::BTreeSet::new();
             $(
-                let boxed: std::boxed::Box<dyn $crate::trigger::Trigger + 'static> = std::boxed::Box::new($x);
+                let boxed: std::boxed::Box<dyn Trigger + 'static> = std::boxed::Box::new($x);
                 temp_set.insert(boxed);
             )*
-            $crate::job::TriggerCollection(temp_set)
+            TriggerCollection(temp_set)
         }
     };
 }
