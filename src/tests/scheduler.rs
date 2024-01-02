@@ -3,9 +3,10 @@ mod tests {
     use crate::tests::fake_time::{dt_parse, set_start_time};
     use crate::tests::tests::DEFAULT_UTC;
 
-    use crate::job::{triggerCollection, Job};
+    use crate::job::Job;
     use crate::scheduler::Scheduler;
     use crate::trigger::Oneshot;
+    use crate::triggerCollection;
 
     fn callback() {
         println!("test scheduler callback");

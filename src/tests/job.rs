@@ -3,8 +3,9 @@ mod tests {
     use crate::tests::fake_time::{dt_parse, set_start_time};
     use crate::tests::tests::DEFAULT_UTC;
 
-    use crate::job::{triggerCollection, Job, TriggerCollection};
+    use crate::job::{Job, TriggerCollection};
     use crate::trigger::{Interval, Oneshot, Trigger, Weekly};
+    use crate::triggerCollection;
     use chrono::{DateTime, Utc};
     use chrono_tz::UTC;
     use std::time::Duration;
