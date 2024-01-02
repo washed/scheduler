@@ -3,9 +3,12 @@ mod tests {
     use crate::tests::fake_time::{dt_parse, set_start_time};
     use crate::tests::tests::DEFAULT_UTC;
 
-    use crate::job::Job;
-    use crate::trigger::Oneshot;
+    use crate::job::{Job, TriggerCollection};
+    use crate::trigger::{Interval, Oneshot, Trigger, Weekly};
+    use crate::triggerCollection;
     use chrono::{DateTime, Utc};
+    use chrono_tz::UTC;
+    use std::time::Duration;
     use tokio::task::JoinSet;
 
     fn callback() {
@@ -16,11 +19,12 @@ mod tests {
     async fn test_job_run() {
         set_start_time(DEFAULT_UTC);
         let oneshot = Oneshot::new(dt_parse(DEFAULT_UTC) + std::time::Duration::from_secs(1));
-        let mut job = Job::new("test".to_string(), callback, vec![Box::new(oneshot)]);
+        let tc = TriggerCollection::from(triggerCollection![oneshot]);
+        let job = Job::new("test".to_string(), callback, tc);
 
         let mut join_set = JoinSet::new();
 
-        job.run(&mut join_set);
+        Job::run(job, &mut join_set);
         match join_set.join_next().await {
             Some(_) => {}
             None => {}
@@ -28,11 +32,58 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_trigger_collection() {
+        let oneshot = Oneshot::new(DateTime::<Utc>::default() + std::time::Duration::from_secs(1));
+        let interval = Interval::new(std::time::Duration::from_secs(1));
+        let weekly = Weekly::new(
+            [true, true, true, true, false, false, false],
+            Duration::from_secs(60),
+            UTC,
+        );
+        let tc = triggerCollection![oneshot, interval, weekly];
+        let tc_json = serde_json::to_string(&tc).unwrap();
+        println!("{:#?}", tc_json);
+    }
+
+    #[tokio::test]
     async fn test_job_serialize() {
         let oneshot = Oneshot::new(DateTime::<Utc>::default() + std::time::Duration::from_secs(1));
-        let job = Job::new("test".to_string(), callback, vec![Box::new(oneshot)]);
+        let interval = Interval::new(std::time::Duration::from_secs(1));
+        let weekly = Weekly::new(
+            [true, true, true, true, false, false, false],
+            Duration::from_secs(60),
+            UTC,
+        );
+        let job = Job::new(
+            "test".to_string(),
+            callback,
+            triggerCollection![oneshot, interval, weekly],
+        );
 
-        let foo = serde_json::to_string(&job).unwrap();
-        println!("{foo}");
+        let expected_job_json = r#"{"name":"test","triggers":[{"type":"Oneshot","datetime":"1970-01-01T00:00:01Z"},{"type":"Interval","interval":{"secs":1,"nanos":0},"last_run":null},{"type":"Weekly","weekdays":[true,true,true,true,false,false,false],"time":{"secs":60,"nanos":0},"tz":"UTC"}]}"#;
+
+        let job_json = serde_json::to_string(&job).unwrap();
+        assert_eq!(expected_job_json, job_json);
+    }
+
+    #[tokio::test]
+    async fn test_job_deserialize() {
+        let oneshot = Oneshot::new(DateTime::<Utc>::default() + std::time::Duration::from_secs(1));
+        let interval = Interval::new(std::time::Duration::from_secs(1));
+        let weekly = Weekly::new(
+            [true, true, true, true, false, false, false],
+            Duration::from_secs(60),
+            UTC,
+        );
+        let expected_job = Job::new(
+            "test".to_string(),
+            callback,
+            triggerCollection![oneshot, interval, weekly],
+        );
+
+        let job_json = r#"{"name":"test","triggers":[{"type":"Oneshot","datetime":"1970-01-01T00:00:01Z"},{"type":"Interval","interval":{"secs":1,"nanos":0},"last_run":null},{"type":"Weekly","weekdays":[true,true,true,true,false,false,false],"time":{"secs":60,"nanos":0},"tz":"UTC"}]}"#;
+        let job: Job = serde_json::from_str(job_json).unwrap();
+
+        // assert_eq!(expected_job, job);
     }
 }

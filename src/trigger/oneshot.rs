@@ -38,4 +38,8 @@ impl Trigger for Oneshot {
                 .collect(),
         )
     }
+
+    fn hash(&self) -> String {
+        serde_json::to_string(self).unwrap()
+    }
 }

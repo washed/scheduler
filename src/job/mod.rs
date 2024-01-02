@@ -3,7 +3,7 @@ use crate::trigger::{NowUtc, Trigger};
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use std::fmt;
+use std::{collections::BTreeSet, fmt};
 use tokio::task::JoinSet;
 use tokio::time::sleep;
 use tracing::debug;
@@ -13,29 +13,48 @@ pub type Result<T> = std::result::Result<T, NoMoreRunsError>;
 #[derive(Debug, Clone)]
 pub struct NoMoreRunsError;
 
+#[derive(Serialize, Deserialize, PartialEq)]
+pub struct TriggerCollection(pub BTreeSet<Box<dyn Trigger>>);
+
+impl TriggerCollection {
+    pub fn iter(&self) -> std::collections::btree_set::Iter<'_, Box<dyn Trigger>> {
+        self.0.iter()
+    }
+}
+
+#[macro_export]
+macro_rules! triggerCollection {
+    ( $( $x:expr ),* ) => {
+        {
+            let mut temp_set = std::collections::BTreeSet::new();
+            $(
+                let boxed: std::boxed::Box<dyn $crate::trigger::Trigger + 'static> = std::boxed::Box::new($x);
+                temp_set.insert(boxed);
+            )*
+            $crate::job::TriggerCollection(temp_set)
+        }
+    };
+}
+
 impl fmt::Display for NoMoreRunsError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "no more runs")
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, PartialEq)]
 pub struct Job {
     pub name: String,
     #[serde(skip)]
     callback: Option<fn()>,
-    triggers: Vec<Box<dyn Trigger + Send + Sync>>,
+    triggers: TriggerCollection,
 }
 
 #[cfg(not(test))]
 impl NowUtc for Job {}
 
 impl Job {
-    pub fn new(
-        name: String,
-        callback: fn(),
-        triggers: Vec<Box<dyn Trigger + Send + Sync>>,
-    ) -> Self {
+    pub fn new(name: String, callback: fn(), triggers: TriggerCollection) -> Self {
         Self {
             name,
             callback: Some(callback),
@@ -43,10 +62,10 @@ impl Job {
         }
     }
 
-    pub fn next_run(triggers: &Vec<Box<dyn Trigger + Send + Sync>>) -> Option<DateTime<Utc>> {
+    pub fn next_run(triggers: &TriggerCollection) -> Option<DateTime<Utc>> {
         triggers
             .iter()
-            .filter_map(|t: &Box<dyn Trigger + Send + Sync>| {
+            .filter_map(|t: &Box<dyn Trigger>| {
                 let next_run = t.next_runs(1);
                 match next_run {
                     Some(next_run) => Some(next_run[0].to_owned()),
@@ -61,11 +80,10 @@ impl Job {
     fn start_task(
         tasks: &mut JoinSet<Result<()>>,
         name: String,
-        triggers: Vec<Box<dyn Trigger + Send + Sync>>,
+        triggers: TriggerCollection,
         callback: fn(),
     ) {
         tasks.spawn(async move {
-            let triggers = triggers.to_vec();
             loop {
                 let next_run = Job::next_run(&triggers).ok_or(NoMoreRunsError)?;
                 let sleep_time = next_run - Self::now_utc();
@@ -83,13 +101,12 @@ impl Job {
         });
     }
 
-    pub fn run(&mut self, tasks: &mut JoinSet<Result<()>>) {
-        let triggers = self.triggers.as_slice().to_vec();
+    pub fn run(job: Self, tasks: &mut JoinSet<Result<()>>) {
         Some(Job::start_task(
             tasks,
-            self.name.to_owned(),
-            triggers,
-            self.callback.unwrap_or(|| {}),
+            job.name,
+            job.triggers,
+            job.callback.unwrap_or(|| {}),
         ));
     }
 }

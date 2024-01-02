@@ -17,8 +17,8 @@ impl Scheduler {
 
     pub async fn run(self) {
         let mut tasks = JoinSet::<Result<()>>::new();
-        for mut job in self.jobs {
-            job.run(&mut tasks);
+        for job in self.jobs {
+            Job::run(job, &mut tasks);
         }
 
         while tasks.len() > 0 {
