@@ -23,6 +23,22 @@ impl TriggerCollection {
 }
 
 #[macro_export]
+macro_rules! inc_a {
+    ($x:expr) => ( ::increment($x) )
+}
+
+#[macro_export]
+macro_rules! inc_b {
+    ($x:expr) => ( ::scheduler::increment($x) )
+}
+
+#[macro_export]
+macro_rules! inc {
+    ($x:expr) => ( $crate::increment($x) )
+}
+
+
+#[macro_export]
 macro_rules! triggerCollection {
     ( $( $x:expr ),* ) => ({
         use $crate::trigger::Trigger;
