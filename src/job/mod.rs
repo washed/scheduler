@@ -38,7 +38,7 @@ macro_rules! __triggerCollection__ {
     });
 }
 
-pub(crate) use __triggerCollection__ as triggerCollection;
+pub use crate::__triggerCollection__ as triggerCollection;
 
 impl fmt::Display for NoMoreRunsError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
