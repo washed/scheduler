@@ -1,4 +1,4 @@
-use crate::trigger::{NowUtc, Trigger, TriggerSet};
+use crate::trigger::{NowUtc, TriggerSet};
 
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use itertools::Itertools;
@@ -43,12 +43,9 @@ impl Job {
     pub fn next_run(triggers: &TriggerSet) -> Option<DateTime<Utc>> {
         triggers
             .iter()
-            .filter_map(|t: &Box<dyn Trigger>| {
+            .filter_map(|t| {
                 let next_run = t.next_runs(1);
-                match next_run {
-                    Some(next_run) => Some(next_run[0].to_owned()),
-                    None => None,
-                }
+                next_run.map(|next_run| next_run[0].to_owned())
             })
             .sorted()
             .take(1)
@@ -80,11 +77,6 @@ impl Job {
     }
 
     pub fn run(job: Self, tasks: &mut JoinSet<Result<()>>) {
-        Some(Job::start_task(
-            tasks,
-            job.name,
-            job.triggers,
-            job.callback.unwrap_or(|| {}),
-        ));
+        Job::start_task(tasks, job.name, job.triggers, job.callback.unwrap_or(|| {}));
     }
 }

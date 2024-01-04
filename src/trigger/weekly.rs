@@ -61,7 +61,6 @@ impl Trigger for Weekly {
                         let weekday = now.weekday();
                         let weekday_offset = weekday.num_days_from_monday() as i64;
                         let now_midnight = now
-                            .clone()
                             .duration_round(ChronoDuration::days(1))
                             .unwrap()
                             .naive_local();

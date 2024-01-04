@@ -21,7 +21,7 @@ impl Scheduler {
             Job::run(job, &mut tasks);
         }
 
-        while tasks.len() > 0 {
+        while !tasks.is_empty() {
             match tasks.join_next().await {
                 Some(result) => match result {
                     Ok(task_return) => match task_return {
@@ -37,5 +37,11 @@ impl Scheduler {
                 }
             }
         }
+    }
+}
+
+impl Default for Scheduler {
+    fn default() -> Self {
+        Self::new()
     }
 }
