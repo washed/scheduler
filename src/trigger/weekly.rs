@@ -1,6 +1,7 @@
 use super::{NowUtc, Trigger};
 use chrono::{DateTime, Datelike, Duration as ChronoDuration, DurationRound, Utc};
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 use std::time::Duration;
 
 #[derive(Clone, Serialize, Deserialize, Hash, Eq, PartialEq)]
@@ -18,7 +19,13 @@ impl Ord for Tz {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+impl Debug for Tz {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.0.name())
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Weekly {
     weekdays: [bool; 7],
     time: Duration,

@@ -2,8 +2,9 @@ use super::{NowUtc, Trigger};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
+// use std::fmt::Debug;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Interval {
     interval: std::time::Duration,
     last_run: Option<DateTime<Utc>>,
@@ -63,3 +64,11 @@ impl Trigger for Interval {
         serde_json::to_string(self).unwrap()
     }
 }
+
+/*
+impl Debug for Interval {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Interval").field("name", value)
+    }
+}
+*/

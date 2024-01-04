@@ -1,12 +1,13 @@
 pub mod interval;
 pub mod oneshot;
+pub mod trigger_set;
 pub mod weekly;
 
 use chrono::{DateTime, Utc};
 use std::time::Duration;
 
 #[typetag::serde(tag = "type")]
-pub trait Trigger
+pub trait Trigger: std::fmt::Debug
 where
     Self: Send,
 {
@@ -47,4 +48,4 @@ pub trait NowUtc {
     }
 }
 
-pub use self::{interval::Interval, oneshot::Oneshot, weekly::Weekly};
+pub use self::{interval::Interval, oneshot::Oneshot, trigger_set::TriggerSet, weekly::Weekly};

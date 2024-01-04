@@ -3,9 +3,9 @@ mod tests {
     use crate::tests::fake_time::{dt_parse, set_start_time};
     use crate::tests::tests::DEFAULT_UTC;
 
-    use crate::job::{Job, TriggerCollection};
-    use crate::trigger::{Interval, Oneshot, Weekly};
-    use crate::triggerCollection;
+    use crate::job::Job;
+    use crate::trigger::{Interval, Oneshot, TriggerSet, Weekly};
+    use crate::triggerSet;
     use chrono::{DateTime, Utc};
     use chrono_tz::UTC;
     use std::time::Duration;
@@ -19,8 +19,8 @@ mod tests {
     async fn test_job_run() {
         set_start_time(DEFAULT_UTC);
         let oneshot = Oneshot::new(dt_parse(DEFAULT_UTC) + std::time::Duration::from_secs(1));
-        let tc = TriggerCollection::from(triggerCollection![oneshot]);
-        let job = Job::new("test".to_string(), callback, tc);
+        let tc = TriggerSet::from(triggerSet![oneshot]);
+        let job = Job::new("test".to_string(), Some(callback), tc);
 
         let mut join_set = JoinSet::new();
 
@@ -40,7 +40,7 @@ mod tests {
             Duration::from_secs(60),
             UTC,
         );
-        let tc = triggerCollection![oneshot, interval, weekly];
+        let tc = triggerSet![oneshot, interval, weekly];
         let tc_json = serde_json::to_string(&tc).unwrap();
         println!("{:#?}", tc_json);
     }
@@ -56,8 +56,8 @@ mod tests {
         );
         let job = Job::new(
             "test".to_string(),
-            callback,
-            triggerCollection![oneshot, interval, weekly],
+            Some(callback),
+            triggerSet![oneshot, interval, weekly],
         );
 
         let expected_job_json = r#"{"name":"test","triggers":[{"type":"Oneshot","datetime":"1970-01-01T00:00:01Z"},{"type":"Interval","interval":{"secs":1,"nanos":0},"last_run":null},{"type":"Weekly","weekdays":[true,true,true,true,false,false,false],"time":{"secs":60,"nanos":0},"tz":"UTC"}]}"#;
@@ -77,13 +77,13 @@ mod tests {
         );
         let expected_job = Job::new(
             "test".to_string(),
-            callback,
-            triggerCollection![oneshot, interval, weekly],
+            None,
+            triggerSet![oneshot, interval, weekly],
         );
 
         let job_json = r#"{"name":"test","triggers":[{"type":"Oneshot","datetime":"1970-01-01T00:00:01Z"},{"type":"Interval","interval":{"secs":1,"nanos":0},"last_run":null},{"type":"Weekly","weekdays":[true,true,true,true,false,false,false],"time":{"secs":60,"nanos":0},"tz":"UTC"}]}"#;
         let job: Job = serde_json::from_str(job_json).unwrap();
 
-        // assert_eq!(expected_job, job);
+        assert_eq!(expected_job, job);
     }
 }

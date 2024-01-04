@@ -1,9 +1,10 @@
-use crate::trigger::{NowUtc, Trigger};
+use crate::trigger::{NowUtc, Trigger, TriggerSet};
 
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeSet, fmt};
+use std::fmt;
+use std::fmt::Debug;
 use tokio::task::JoinSet;
 use tokio::time::sleep;
 use tracing::debug;
@@ -13,58 +14,33 @@ pub type Result<T> = std::result::Result<T, NoMoreRunsError>;
 #[derive(Debug, Clone)]
 pub struct NoMoreRunsError;
 
-#[derive(Serialize, Deserialize, PartialEq)]
-pub struct TriggerCollection(pub BTreeSet<Box<dyn Trigger>>);
-
-impl TriggerCollection {
-    pub fn iter(&self) -> std::collections::btree_set::Iter<'_, Box<dyn Trigger>> {
-        self.0.iter()
-    }
-}
-
-#[macro_export]
-macro_rules! triggerCollection {
-    ( $( $x:expr ),* ) => ({
-        use $crate::trigger::Trigger;
-        use $crate::job::TriggerCollection;
-        {
-            let mut temp_set = std::collections::BTreeSet::new();
-            $(
-                let boxed: std::boxed::Box<dyn Trigger + 'static> = std::boxed::Box::new($x);
-                temp_set.insert(boxed);
-            )*
-            TriggerCollection(temp_set)
-        }
-    });
-}
-
 impl fmt::Display for NoMoreRunsError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "no more runs")
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct Job {
     pub name: String,
     #[serde(skip)]
     callback: Option<fn()>,
-    triggers: TriggerCollection,
+    triggers: TriggerSet,
 }
 
 #[cfg(not(test))]
 impl NowUtc for Job {}
 
 impl Job {
-    pub fn new(name: String, callback: fn(), triggers: TriggerCollection) -> Self {
+    pub fn new(name: String, callback: Option<fn()>, triggers: TriggerSet) -> Self {
         Self {
             name,
-            callback: Some(callback),
+            callback,
             triggers,
         }
     }
 
-    pub fn next_run(triggers: &TriggerCollection) -> Option<DateTime<Utc>> {
+    pub fn next_run(triggers: &TriggerSet) -> Option<DateTime<Utc>> {
         triggers
             .iter()
             .filter_map(|t: &Box<dyn Trigger>| {
@@ -82,7 +58,7 @@ impl Job {
     fn start_task(
         tasks: &mut JoinSet<Result<()>>,
         name: String,
-        triggers: TriggerCollection,
+        triggers: TriggerSet,
         callback: fn(),
     ) {
         tasks.spawn(async move {
