@@ -22,19 +22,23 @@ impl TriggerCollection {
     }
 }
 
+pub fn increment(x: u32) -> u32 {
+    x + 1
+}
+
 #[macro_export]
 macro_rules! inc_a {
-    ($x:expr) => ( ::increment($x) )
+    ($x:expr) => ( ::job::increment($x) )
 }
 
 #[macro_export]
 macro_rules! inc_b {
-    ($x:expr) => ( ::scheduler::increment($x) )
+    ($x:expr) => ( ::scheduler::job::increment($x) )
 }
 
 #[macro_export]
 macro_rules! inc {
-    ($x:expr) => ( $crate::increment($x) )
+    ($x:expr) => ( $crate::job::increment($x) )
 }
 
 
