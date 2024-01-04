@@ -4,7 +4,7 @@ mod tests {
     use crate::tests::tests::DEFAULT_UTC;
 
     use crate::job::{Job, TriggerCollection};
-    use crate::trigger::{Interval, Oneshot, Trigger, Weekly};
+    use crate::trigger::{Interval, Oneshot, Weekly};
     use crate::triggerCollection;
     use chrono::{DateTime, Utc};
     use chrono_tz::UTC;
