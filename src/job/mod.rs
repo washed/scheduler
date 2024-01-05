@@ -3,6 +3,7 @@ use crate::trigger::{NowUtc, TriggerSet};
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::fmt;
 use std::fmt::Debug;
 use tokio::task::JoinSet;
@@ -24,7 +25,8 @@ impl fmt::Display for NoMoreRunsError {
 pub struct Job {
     pub name: String,
     #[serde(skip)]
-    callback: Option<fn()>,
+    callback: Option<fn(context: &Value)>,
+    callback_context: Value,
     triggers: TriggerSet,
 }
 
@@ -32,10 +34,16 @@ pub struct Job {
 impl NowUtc for Job {}
 
 impl Job {
-    pub fn new(name: String, callback: Option<fn()>, triggers: TriggerSet) -> Self {
+    pub fn new(
+        name: String,
+        callback: Option<fn(context: &Value)>,
+        callback_context: Value,
+        triggers: TriggerSet,
+    ) -> Self {
         Self {
             name,
             callback,
+            callback_context,
             triggers,
         }
     }
@@ -56,7 +64,8 @@ impl Job {
         tasks: &mut JoinSet<Result<()>>,
         name: String,
         triggers: TriggerSet,
-        callback: fn(),
+        callback: fn(context: &Value),
+        callback_context: Value,
     ) {
         tasks.spawn(async move {
             loop {
@@ -71,12 +80,18 @@ impl Job {
                 sleep(sleep_time).await;
 
                 debug!(name, "triggered");
-                callback();
+                callback(&callback_context);
             }
         });
     }
 
     pub fn run(job: Self, tasks: &mut JoinSet<Result<()>>) {
-        Job::start_task(tasks, job.name, job.triggers, job.callback.unwrap_or(|| {}));
+        Job::start_task(
+            tasks,
+            job.name,
+            job.triggers,
+            job.callback.unwrap_or(|_| {}),
+            job.callback_context,
+        );
     }
 }
